@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Authentication</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Configuration File -->
+    <script src="config.js"></script>
+</head>
+<body>
+    <h1>Authentication Test</h1>
+    <div id="status"></div>
+    
+    <script>
+        // Check if config is loaded
+        if (typeof CONFIG === 'undefined') {
+            document.getElementById('status').innerHTML = '<p>❌ Configuration file not found</p>';
+            throw new Error('Config file not loaded');
+        }
+
+        // Initialize Firebase with config
+        firebase.initializeApp(CONFIG.firebase);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const statusDiv = document.getElementById('status');
+
+        // Test Firebase connection
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                statusDiv.innerHTML = `
+                    <p>✅ Firebase Auth: Connected</p>
+                    <p>User: ${user.email}</p>
+                    <p>UID: ${user.uid}</p>
+                `;
+                
+                // Test Firestore connection
+                db.collection('users').where('email', '==', user.email).get()
+                    .then(snapshot => {
+                        if (!snapshot.empty) {
+                            const userData = snapshot.docs[0].data();
+                            statusDiv.innerHTML += `
+                                <p>✅ Firestore: Connected</p>
+                                <p>User Data: ${JSON.stringify(userData, null, 2)}</p>
+                            `;
+                        } else {
+                            statusDiv.innerHTML += `<p>⚠️ Firestore: No user document found</p>`;
+                        }
+                    })
+                    .catch(error => {
+                        statusDiv.innerHTML += `<p>❌ Firestore Error: ${error.message}</p>`;
+                    });
+            } else {
+                statusDiv.innerHTML = `
+                    <p>✅ Firebase Auth: Connected but no user signed in</p>
+                    <p>Please sign in using the signin.html page</p>
+                `;
+            }
+        });
+
+        // Test Firestore connection independently
+        db.collection('counters').doc('customerIds').get()
+            .then(doc => {
+                if (doc.exists) {
+                    statusDiv.innerHTML += `<p>✅ Firestore Counter: ${doc.data().count}</p>`;
+                } else {
+                    statusDiv.innerHTML += `<p>⚠️ Firestore Counter: Document doesn't exist</p>`;
+                }
+            })
+            .catch(error => {
+                statusDiv.innerHTML += `<p>❌ Firestore Counter Error: ${error.message}</p>`;
+            });
+    </script>
+</body>
+</html>
